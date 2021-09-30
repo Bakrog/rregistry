@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  redis:
+    image: "bitnami/redis:latest"
+    environment:
+      ALLOW_EMPTY_PASSWORD: "yes"
+      REDIS_AOF_ENABLED: "no"
+    ports:
+      - "6379:6379"

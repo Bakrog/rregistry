@@ -4,7 +4,7 @@
 
 `rregistry` is a container registry wrote with rust programming language.
 
-**NB! Currently it's a work in progress.**
+**NB! Currently, it's a work in progress.**
 
 ## How to use
 

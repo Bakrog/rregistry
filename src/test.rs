@@ -249,8 +249,8 @@ fn docker_client() -> Cli {
     clients::Cli::default()
 }
 
-async fn run_redis<'redis>(docker_client: &'redis Cli) -> Container<'redis, Cli, RedisImage> {
-    let redis_node: Container<'redis, Cli, RedisImage> = docker_client.run_with_args(
+async fn run_redis<'redis>(docker_client: &'_ Cli) -> Container<'_, Cli, RedisImage> {
+    let redis_node: Container<'_, Cli, RedisImage> = docker_client.run_with_args(
         redis_image::Redis::default().with_tag("6.2-alpine"),
         RunArgs::default().with_mapped_port((portpicker::pick_unused_port().unwrap(), REDIS_PORT)),
     );

@@ -214,14 +214,14 @@ fn delete(name: &str, reference: &str, con: &mut PooledConnection<Client>) -> Re
     match result {
         Ok(manifest) => {
             let sum = if is_accepted_digest(reference) {
-                search_alias_and_delete_it(&name, reference, con)
+                search_alias_and_delete_it(name, reference, con)
             } else {
                 remove_tag_relation_from_digest(name, reference, con, manifest)
             }
-            .expect(format!("couldn't delete all elements of {}/{}", name, reference).as_str());
+            .unwrap();
             Ok(sum)
         }
-        Err(_) => search_alias_and_delete_it(&name, &reference, con),
+        Err(_) => search_alias_and_delete_it(name, reference, con),
     }
 }
 
@@ -255,8 +255,8 @@ fn delete_alias(name: &str, con: &mut PooledConnection<Client>, alias: Vec<Strin
 }
 
 /// Delete alias key
-fn delete_alias_key(con: &mut PooledConnection<Client>, alias_key: &String) -> Result<i8> {
-    Ok(con.del::<String, i8>(alias_key.clone()).unwrap())
+fn delete_alias_key(con: &mut PooledConnection<Client>, alias_key: &str) -> Result<i8> {
+    Ok(con.del::<String, i8>(alias_key.to_string()).unwrap())
 }
 
 /// Remove tag from digest

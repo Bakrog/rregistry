@@ -20,9 +20,9 @@ use std::collections::HashMap;
 use std::ops::Add;
 
 /// Prefix for storing manifest at Redis
-const MANIFEST_PREFIX_KEY: &'static str = "manifest";
+const MANIFEST_PREFIX_KEY: &str = "manifest";
 /// Suffix for stored alias at Redis
-const MANIFEST_ALIAS_SUFFIX_KEY: &'static str = "alias";
+const MANIFEST_ALIAS_SUFFIX_KEY: &str = "alias";
 
 /// Represents an [OCI Image manifest](https://github.com/opencontainers/image-spec/blob/main/manifest.md)
 #[derive(Serialize, Deserialize, Debug, Clone)]

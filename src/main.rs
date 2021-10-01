@@ -30,9 +30,9 @@ use std::env;
 
 use r2d2::Pool;
 use redis::Client;
-use rocket::{get, launch, routes, Build, Rocket};
 use rocket::http::Status;
 use rocket::serde::{Deserialize, Serialize};
+use rocket::{get, launch, routes, Build, Rocket};
 
 static REDIS_CONNECTION_ENV: &str = "REDIS_CONNECTION_STRING";
 
@@ -68,7 +68,7 @@ pub struct Descriptor {
     /// This OPTIONAL property contains arbitrary metadata for this descriptor.
     /// This OPTIONAL property MUST use the
     /// [annotation rules](https://github.com/opencontainers/image-spec/blob/main/annotations.md#rules).
-    pub annotations: HashMap<String, String>
+    pub annotations: HashMap<String, String>,
 }
 
 /// To check whether or not the registry implements the OCI Distribution specification
@@ -81,23 +81,27 @@ async fn v2() -> Status {
 #[launch]
 fn rocket() -> Rocket<Build> {
     rocket::build()
-        .mount("/v2", routes![
-            v2,
-            manifest::check_manifest,
-            manifest::get_manifest,
-            manifest::delete_manifest
-        ]).manage(create_redis_pool())
+        .mount(
+            "/v2",
+            routes![
+                v2,
+                manifest::check_manifest,
+                manifest::get_manifest,
+                manifest::delete_manifest
+            ],
+        )
+        .manage(create_redis_pool())
 }
 
 /// Creates a connection pool to Redis
 fn create_redis_pool() -> Pool<Client> {
-    let redis_connection_string = env::var(REDIS_CONNECTION_ENV).expect("find redis connection string");
+    let redis_connection_string =
+        env::var(REDIS_CONNECTION_ENV).expect("find redis connection string");
     Pool::builder()
-        .build(
-            redis::Client::open(redis_connection_string).expect("redis server connection")
-        )
+        .build(redis::Client::open(redis_connection_string).expect("redis server connection"))
         .expect("redis pool connection")
 }
 
 #[doc(hidden)]
-#[cfg(test)] mod test;
+#[cfg(test)]
+mod test;

@@ -1,17 +1,20 @@
-use super::Descriptor;
 use super::tags::{is_accepted_digest, is_tag_name_valid};
+use super::Descriptor;
 
-use anyhow::{bail, Result, Error};
+use anyhow::{bail, Error, Result};
 
 use r2d2::{Pool, PooledConnection};
 
-use redis::{Client, Commands, ConnectionLike, FromRedisValue, Value, RedisResult, ToRedisArgs, RedisWrite, RedisError, ErrorKind};
+use redis::{
+    Client, Commands, ConnectionLike, ErrorKind, FromRedisValue, RedisError, RedisResult,
+    RedisWrite, ToRedisArgs, Value,
+};
 use regex::Regex;
 
-use rocket::{delete, get, head, State};
 use rocket::http::Status;
-use rocket::serde::{Serialize, Deserialize};
 use rocket::serde::json::Json;
+use rocket::serde::{Deserialize, Serialize};
+use rocket::{delete, get, head, State};
 
 use std::collections::HashMap;
 use std::ops::Add;
@@ -48,17 +51,18 @@ pub struct Manifest {
     /// This OPTIONAL property MUST use the [annotation rules](https://github.com/opencontainers/image-spec/blob/main/annotations.md#rules).
     ///
     /// See [Pre-Defined Annotation Keys](https://github.com/opencontainers/image-spec/blob/main/annotations.md#pre-defined-annotation-keys).
-    pub annotations: HashMap<String, String>
+    pub annotations: HashMap<String, String>,
 }
 
 /// Deserialize the manifest binary from redis to an Object
 impl FromRedisValue for Manifest {
     fn from_redis_value(v: &Value) -> RedisResult<Self> {
         match *v {
-            Value::Data(ref bytes) => Ok(
-                bincode::deserialize(bytes).unwrap()
-            ),
-            Value::Nil => Err(RedisError::from((ErrorKind::IoError, "Couldn't find manifest"))),
+            Value::Data(ref bytes) => Ok(bincode::deserialize(bytes).unwrap()),
+            Value::Nil => Err(RedisError::from((
+                ErrorKind::IoError,
+                "Couldn't find manifest",
+            ))),
             _ => panic!("Response type not string compatible."),
         }
     }
@@ -66,7 +70,10 @@ impl FromRedisValue for Manifest {
 
 /// Serialize a manifest object to binary
 impl ToRedisArgs for Manifest {
-    fn write_redis_args<W>(&self, vec: &mut W) where W: ?Sized + RedisWrite {
+    fn write_redis_args<W>(&self, vec: &mut W)
+    where
+        W: ?Sized + RedisWrite,
+    {
         let bytes = bincode::serialize(self).unwrap();
         vec.write_arg(bytes.as_slice())
     }
@@ -74,7 +81,11 @@ impl ToRedisArgs for Manifest {
 
 /// Check if the manifest exists
 #[head("/<name>/manifests/<reference>")]
-pub async fn check_manifest(name: &str, reference: &str, connection_pool: &State<Pool<Client>>) -> Status {
+pub async fn check_manifest(
+    name: &str,
+    reference: &str,
+    connection_pool: &State<Pool<Client>>,
+) -> Status {
     if !is_valid_request(name, reference) {
         return Status::NotFound;
     }
@@ -91,11 +102,17 @@ pub async fn check_manifest(name: &str, reference: &str, connection_pool: &State
 /// - `name`: The manifest name
 /// - `reference`: The manifest tag or digest
 #[get("/<name>/manifests/<reference>")]
-pub async fn get_manifest(name: &str, reference: &str, connection_pool: &State<Pool<Client>>) -> Option<Json<Manifest>> {
+pub async fn get_manifest(
+    name: &str,
+    reference: &str,
+    connection_pool: &State<Pool<Client>>,
+) -> Option<Json<Manifest>> {
     if !is_valid_request(name, reference) {
         return None;
     }
-    let mut con = connection_pool.get().expect("couldn't get connection to redis");
+    let mut con = connection_pool
+        .get()
+        .expect("couldn't get connection to redis");
     let manifest = manifest(name, reference, &mut con).expect("couldn't find manifest");
     Some(Json(manifest))
 }
@@ -106,11 +123,17 @@ pub async fn get_manifest(name: &str, reference: &str, connection_pool: &State<P
 ///
 /// Deleting a manifest digest means that all tags will be deleted.
 #[delete("/<name>/manifests/<reference>")]
-pub async fn delete_manifest(name: &str, reference: &str, connection_pool: &State<Pool<Client>>) -> Status {
+pub async fn delete_manifest(
+    name: &str,
+    reference: &str,
+    connection_pool: &State<Pool<Client>>,
+) -> Status {
     if !is_valid_request(name, reference) {
         return Status::NotFound;
     }
-    let mut con = connection_pool.get().expect("couldn't get connection to redis");
+    let mut con = connection_pool
+        .get()
+        .expect("couldn't get connection to redis");
     match delete(name, reference, &mut con) {
         Ok(removed_manifests) => {
             if removed_manifests > 0 {
@@ -119,7 +142,7 @@ pub async fn delete_manifest(name: &str, reference: &str, connection_pool: &Stat
                 Status::NotFound
             }
         }
-        Err(_) => Status::NotFound
+        Err(_) => Status::NotFound,
     }
 }
 
@@ -142,7 +165,10 @@ fn generate_manifest_key<'manifest>(name: &'manifest str, reference: &'manifest 
 
 #[doc(hidden)]
 fn generate_alias_key<'manifest>(name: &'manifest str, digest: &'manifest str) -> String {
-    format!("{}::{}::{}::{}", MANIFEST_PREFIX_KEY, name, digest, MANIFEST_ALIAS_SUFFIX_KEY)
+    format!(
+        "{}::{}::{}::{}",
+        MANIFEST_PREFIX_KEY, name, digest, MANIFEST_ALIAS_SUFFIX_KEY
+    )
 }
 
 /// Search at redis if an manifest exists
@@ -164,14 +190,15 @@ fn manifest(name: &str, reference: &str, con: &mut PooledConnection<Client>) -> 
             let search_alias: RedisResult<Vec<String>> = con.smembers(alias_key);
             match search_alias {
                 Ok(alias) => {
-                    let existing_alias = alias.iter()
+                    let existing_alias = alias
+                        .iter()
                         .filter(|alias_key| manifest_exist(name, alias_key, con).unwrap())
                         .take(1)
                         .last()
                         .expect("couldn't find an existing alias");
                     manifest(name, existing_alias, con)
-                },
-                Err(_) => bail!("Couldn't find manifest")
+                }
+                Err(_) => bail!("Couldn't find manifest"),
             }
         }
     }
@@ -180,47 +207,50 @@ fn manifest(name: &str, reference: &str, con: &mut PooledConnection<Client>) -> 
 /// Delete a manifest
 fn delete(name: &str, reference: &str, con: &mut PooledConnection<Client>) -> Result<i8> {
     let key = generate_manifest_key(name, reference);
-    let result = con.req_command(redis::cmd("GETDEL").arg(key))
-        .map(|value| {
-            Manifest::from_redis_value(&value)
-        }).unwrap();
+    let result = con
+        .req_command(redis::cmd("GETDEL").arg(key))
+        .map(|value| Manifest::from_redis_value(&value))
+        .unwrap();
     match result {
         Ok(manifest) => {
             let sum = if is_accepted_digest(reference) {
                 search_alias_and_delete_it(&name, reference, con)
             } else {
                 remove_tag_relation_from_digest(name, reference, con, manifest)
-            }.expect(format!("couldn't delete all elements of {}/{}", name, reference).as_str());
+            }
+            .expect(format!("couldn't delete all elements of {}/{}", name, reference).as_str());
             Ok(sum)
-        },
-        Err(_) => {
-            search_alias_and_delete_it(&name, &reference, con)
         }
+        Err(_) => search_alias_and_delete_it(&name, &reference, con),
     }
 }
 
 /// Search manifest by alias and delete it
-fn search_alias_and_delete_it(name: &str, reference: &str, con: &mut PooledConnection<Client>) -> Result<i8, Error> {
+fn search_alias_and_delete_it(
+    name: &str,
+    reference: &str,
+    con: &mut PooledConnection<Client>,
+) -> Result<i8, Error> {
     let alias_key = &generate_alias_key(name, reference);
     let search_alias: RedisResult<Vec<String>> = con.smembers(alias_key);
     match search_alias {
         Ok(alias) => {
-            let sum = delete_alias(name, con, alias).unwrap()
+            let sum = delete_alias(name, con, alias)
+                .unwrap()
                 .add(delete_alias_key(con, alias_key).unwrap());
             Ok(sum)
-        },
-        Err(_) => Ok(0)
+        }
+        Err(_) => Ok(0),
     }
 }
 
 /// Delete alias
 fn delete_alias(name: &str, con: &mut PooledConnection<Client>, alias: Vec<String>) -> Result<i8> {
     let mut sum: i8 = 0;
-    alias.iter()
-        .for_each(|alias_key| {
-            let key_to_be_deleted = generate_manifest_key(name, alias_key);
-            sum += con.del::<String, i8>(key_to_be_deleted).unwrap();
-        });
+    alias.iter().for_each(|alias_key| {
+        let key_to_be_deleted = generate_manifest_key(name, alias_key);
+        sum += con.del::<String, i8>(key_to_be_deleted).unwrap();
+    });
     Ok(sum)
 }
 
@@ -230,7 +260,12 @@ fn delete_alias_key(con: &mut PooledConnection<Client>, alias_key: &String) -> R
 }
 
 /// Remove tag from digest
-fn remove_tag_relation_from_digest(name: &str, reference: &str, con: &mut PooledConnection<Client>, manifest: Manifest) -> Result<i8, Error> {
+fn remove_tag_relation_from_digest(
+    name: &str,
+    reference: &str,
+    con: &mut PooledConnection<Client>,
+    manifest: Manifest,
+) -> Result<i8, Error> {
     let alias_key = generate_alias_key(name, manifest.config.digest.as_str());
     let response = con.srem(alias_key, reference).unwrap();
     Ok(response)

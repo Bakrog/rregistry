@@ -1129,7 +1129,7 @@ dependencies = [
 
 [[package]]
 name = "rregistry"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "anyhow",
  "bincode",
@@ -1138,8 +1138,6 @@ dependencies = [
  "redis",
  "regex",
  "rocket",
- "sha2",
- "tempfile",
  "testcontainers",
  "tokio",
 ]

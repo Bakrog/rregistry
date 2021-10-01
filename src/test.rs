@@ -1,6 +1,5 @@
-use super::{rocket, Descriptor, REDIS_CONNECTION_ENV};
-// use super::blob::Blob;
 use super::manifest::Manifest;
+use super::{rocket, Descriptor, REDIS_CONNECTION_ENV};
 
 use std::env;
 
@@ -13,8 +12,6 @@ use redis::{Client as redis_client, Commands};
 use testcontainers::clients::Cli;
 use testcontainers::images::redis::Redis as RedisImage;
 use testcontainers::{clients, core::RunArgs, images::redis as redis_image, Container, Docker};
-// use tempfile::tempdir;
-// use std::path::Path;
 
 const REDIS_PORT: u16 = 6379;
 const DEFAULT_DIGEST: &str = "sha256:default_digest";
@@ -225,25 +222,6 @@ async fn manifest_can_be_deleted_by_digest() {
     let response = client.delete(uri).dispatch().await;
     assert_eq!(response.status(), Status::Accepted);
 }
-
-// #[tokio::test]
-// async fn blob_can_be_downloaded() {
-//     let docker_client = docker_client();
-//     let redis = run_redis(&docker_client).await;
-//     let host_redis_port = get_host_port(&redis).unwrap();
-//     let connection_string = set_redis_connection_environment_variable(host_redis_port);
-//     let manifest_name = "test";
-//     let manifest_reference = "exists";
-//     let manifest = generate_manifest_body(DEFAULT_DIGEST);
-//     add_manifest(manifest_name, manifest_reference, &manifest, connection_string);
-//     let dir_path = tempdir().expect("temporary folder").path();
-//     add_blob(manifest, dir_path);
-//     let client = Client::tracked(rocket()).await.expect("valid rocket instance");
-//     let uri = format!("/v2/{}/blobs/{}", manifest_name, DEFAULT_DIGEST);
-//     let response = client.get(uri).dispatch().await;
-//     assert_eq!(response.status(), Status::Ok);
-//     //assert_eq!(response.headers().get("Docker-Content-Digest"), DEFAULT_DIGEST);
-// }
 
 fn docker_client() -> Cli {
     clients::Cli::default()
